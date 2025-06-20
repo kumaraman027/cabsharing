@@ -1,6 +1,6 @@
 import React from "react";
 import cabImage from "../img/img.png";
-import backgroundImage from "../img/cabimp.png";
+
 
 
 const LandingPage = () => {
