@@ -1,0 +1,98 @@
+.joined-rides-container {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.joined-rides-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #f3f3f5; /* indigo-700 */
+  margin-bottom: 30px;
+}
+
+.joined-ride-box {
+  background: linear-gradient(145deg, #3b648e, #6170a4);
+  border: 1px solid #e5e7eb;
+  color: black;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  padding: 20px;
+  margin-bottom: 20px;
+  transition: box-shadow 0.3s ease;
+}
+
+.joined-ride-box:hover {
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.ride-header {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #f7f2f2;
+  margin-bottom: 10px;
+}
+
+.ride-date {
+  color: #acc372;
+  font-size: 0.9rem;
+}
+
+.ride-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.ride-status {
+  font-weight: bold;
+  color: #16be54; /* green for accepted */
+}
+
+.chat-button {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  background-color: #2b2772; /* indigo-700 */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.chat-button:hover {
+  background-color: #4c4789; /* darker indigo */
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-gray-500 {
+  color: #155ce8;
+}
+.chat-button {
+  background-color: #2019b7;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  position: relative;
+}
+
+.chat-badge {
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  position: absolute;
+  top: -8px;
+  right: -10px;
+}

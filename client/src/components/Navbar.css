@@ -1,0 +1,158 @@
+.navbar {
+  background-color: #000512;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.navbar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.brand-name {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: white;
+  text-decoration: none;
+}
+
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* Default links (desktop view) */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.nav-links a:hover {
+  color: rgb(138, 131, 131);
+}
+
+.badge {
+  background-color: #ff4d4d;
+  color: white;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  padding: 2px 6px;
+  position: absolute;
+  top: -6px;
+  right: -10px;
+}
+
+.welcome {
+  font-weight: 500;
+}
+
+.logout {
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.profile-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Profile button */
+.profile-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* Button inside dropdown */
+.profile-btn {
+  background-color: #1e293b;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+/* Dropdown menu */
+.profile-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: #3e5bbc;
+  color: black;
+  padding: 10px 12px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  white-space: nowrap;
+}
+
+/* Responsive fix: force dropdown below on smaller screens */
+@media (max-width: 768px) {
+  .profile-menu {
+    left: 0;
+    right: auto;
+    top: 100%;
+    margin-top: 8px;
+  }
+
+  .profile-dropdown {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-btn {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+
+
+/* ========== Mobile view ========== */
+@media (max-width: 768px) {
+  .menu-toggle {
+    display: block;
+  }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    background-color: #3e5bbc;
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .nav-links.open {
+    display: flex;
+  }
+}

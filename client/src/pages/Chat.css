@@ -1,0 +1,118 @@
+.chat-container {
+  max-width: 700px;
+  margin: auto;
+  padding: 1rem;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #1c366b, #5f435f, #273c90);
+  display: flex;
+  flex-direction: column;
+  height: 85vh;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.chat-header {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  color: #f3f0f0;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  background: linear-gradient(90deg, #335392, #766876);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+}
+
+.chat-sent {
+  background-color: #3bb156;
+  color: white;
+  align-self: flex-end;
+  margin: 6px 0;
+  padding: 10px 14px;
+  border-radius: 12px 12px 0 12px;
+  max-width: 75%;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chat-received {
+  background-color: #494953;
+  color: white;
+  align-self: flex-start;
+  margin: 6px 0;
+  padding: 10px 14px;
+  border-radius: 12px 12px 12px 0;
+  max-width: 75%;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chat-sent small,
+.chat-received small {
+  display: block;
+  font-size: 0.7rem;
+  color: #f7f4f4;
+  margin-top: 4px;
+  text-align: right;
+}
+
+.chat-input {
+  display: flex;
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #ccc;
+  gap: 10px;
+
+}
+
+.chat-input input {
+  flex-grow: 1;
+  padding: 0.6rem;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  font-size: 1rem;
+  outline: none;
+  background: linear-gradient(90deg, #335392, #766876);
+}
+
+.chat-input input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+}
+
+.chat-input button {
+  background-color: #3172b7;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.chat-input button:hover {
+  background-color: #0056b3;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  align-self: flex-start;
+}
+
+.back-button:hover {
+  text-decoration: underline;
+  color: #3730a3;
+}
