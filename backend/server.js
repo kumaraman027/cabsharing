@@ -10,11 +10,15 @@ const MongoStore = require("connect-mongo");
 
 dotenv.config();
 
+// Connect MongoDB
 const connectDB = require("./db");
 connectDB();
 
 const app = express();
 const server = http.createServer(app);
+
+// 🔐 Required for secure cookie/session forwarding from Vercel → Render
+app.set("trust proxy", 1); // ✅ important for proxy handling on Render
 
 // ✅ MongoDB connection
 mongoose
@@ -29,10 +33,11 @@ mongoose
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://cabsharing-s8da.vercel.app"
+    "https://cabsharing-s8da.vercel.app" // your Vercel frontend
   ],
-  credentials: true
+  credentials: true // ✅ crucial for cookie-based auth
 }));
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -42,13 +47,13 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-  mongoUrl: process.env.MONGO_URI, // ✅ Corrected name to match your .env
-  collectionName: "sessions"
-}),
-
+    mongoUrl: process.env.MONGO_URI, // ✅ match with your working env var
+    collectionName: "sessions"
+  }),
   cookie: {
     httpOnly: true,
-    secure: false, // set to true if using HTTPS only
+    secure: true, // ✅ must be true on Render (uses HTTPS)
+    sameSite: "none", // ✅ important for cross-origin cookies
     maxAge: 24 * 60 * 60 * 1000
   }
 }));

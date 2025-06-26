@@ -45,11 +45,18 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ error: "Invalid credentials." });
 
-    // Save user session
     req.session.userId = user._id;
 
-    const { password: _, ...userWithoutPassword } = user._doc;
-    res.json({ message: "Login successful", user: userWithoutPassword });
+    // 🟢 Force session to save before responding
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ error: "Login failed. Try again." });
+      }
+
+      const { password, ...userWithoutPassword } = user._doc;
+      res.json({ message: "Login successful", user: userWithoutPassword });
+    });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Server error during login." });
@@ -58,8 +65,17 @@ router.post("/login", async (req, res) => {
 
 // ✅ LOGOUT
 router.post("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie("connect.sid");
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: "Logout failed." });
+    }
+
+    res.clearCookie("connect.sid", {
+      path: "/",
+      sameSite: "none",
+      secure: true,
+    });
+
     res.json({ message: "Logged out successfully" });
   });
 });
