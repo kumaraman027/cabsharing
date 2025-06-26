@@ -17,7 +17,7 @@ const app = express();
 const server = http.createServer(app);
 
 // ✅ MongoDB connection fallback
-const mongoose = require("mongoose");
+
 
 mongoose
   .connect(process.env.MONGODB_URI, {
