@@ -1,13 +1,13 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
-import { ChatContext } from "../context/ChatContext"; // ✅ import
+import { ChatContext } from "../context/ChatContext";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./JoinedRides.css";
 
 export default function JoinedRides() {
   const { user } = useContext(AuthContext);
-  const { unreadMap } = useContext(ChatContext); // ✅ read unread counts
+  const { unreadMap } = useContext(ChatContext);
   const [joined, setJoined] = useState([]);
   const [postedAccepted, setPostedAccepted] = useState([]);
   const navigate = useNavigate();
@@ -37,7 +37,6 @@ export default function JoinedRides() {
     }
   };
 
-  // ✅ helper to render badge
   const getBadge = (rideId, email) => {
     const key = `${rideId}_${email}`;
     const count = unreadMap[key] || 0;
@@ -52,7 +51,7 @@ export default function JoinedRides() {
         <p className="text-center text-gray-500">No join requests sent yet.</p>
       ) : (
         joined.map((ride, index) => (
-          <div className="joined-ride-box" key={index}>
+          <div className="joined-ride-box" key={ride._id || index}>
             <div className="ride-header">
               {ride.from_location || "Unknown"} → {ride.to_location || "Unknown"}
             </div>
@@ -61,13 +60,14 @@ export default function JoinedRides() {
             </div>
             <div className="ride-footer">
               <div className="ride-status">
-                {ride.accepted === 1
-                  ? "Accepted "
-                  : ride.accepted === 0
-                  ? "Rejected "
-                  : "Pending "}
+                {ride.accepted === true
+                  ? "Accepted"
+                  : ride.accepted === false
+                  ? "Rejected"
+                  : "Pending"}
               </div>
-              {ride.accepted === 1 && (
+
+              {(ride.accepted === true || ride.accepted === 1) && (
                 <button
                   className="chat-button"
                   onClick={() =>
@@ -90,7 +90,7 @@ export default function JoinedRides() {
         <p className="text-center text-gray-500">No accepted join requests for your rides.</p>
       ) : (
         postedAccepted.map((req, index) => (
-          <div className="joined-ride-box" key={`owner-${index}`}>
+          <div className="joined-ride-box" key={req._id || `owner-${index}`}>
             <div className="ride-header">
               {req.from_location || "Unknown"} → {req.to_location || "Unknown"}
             </div>
@@ -101,7 +101,7 @@ export default function JoinedRides() {
                 : "Unknown"}
             </div>
             <div className="ride-footer">
-              <div className="ride-status">Accepted </div>
+              <div className="ride-status">Accepted</div>
               <button
                 className="chat-button"
                 onClick={() =>

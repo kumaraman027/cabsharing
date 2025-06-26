@@ -1,59 +1,93 @@
-import React, { useEffect, useRef, useState, useContext } from "react";
+import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ChatContext } from "../context/ChatContext";
-import './Chat.css';
+import "./Chat.css";
 
 axios.defaults.withCredentials = true;
 
 export default function Chat() {
   const { rideId, participantEmail } = useParams();
   const navigate = useNavigate();
+  const { socket, clearUnread } = useContext(ChatContext);
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    // Load cached messages for this ride and participant if any
+    try {
+      const cached = localStorage.getItem(`chat_${rideId}_${participantEmail}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [input, setInput] = useState("");
   const [loggedInUser, setLoggedInUser] = useState(null);
   const messagesEndRef = useRef(null);
+  const hasLoaded = useRef(false);
 
-  const { socket, clearUnread } = useContext(ChatContext);
+  // Persist messages to localStorage on change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(`chat_${rideId}_${participantEmail}`, JSON.stringify(messages));
+    }
+  }, [messages, rideId, participantEmail]);
 
+  // Fetch logged-in user
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const res = await axios.get("http://localhost:5000/api/auth/me");
         setLoggedInUser(res.data.user);
-        socket?.emit("register", res.data.user.email);
       } catch (err) {
-        alert("Please login first.");
+        console.error("❌ User auth failed:", err);
         navigate("/login");
       }
     };
-
     fetchUser();
-  }, [navigate, socket]);
+  }, [navigate]);
 
+  // Register socket
   useEffect(() => {
-    if (loggedInUser) {
-      clearUnread(rideId, participantEmail);
+    if (loggedInUser && socket) {
+      socket.emit("register", loggedInUser.email);
     }
-  }, [rideId, participantEmail, loggedInUser, clearUnread]);
+  }, [loggedInUser, socket]);
 
-  useEffect(() => {
+  // Fetch initial messages
+  const fetchMessages = useCallback(async () => {
     if (!loggedInUser) return;
-    const fetchMessages = async () => {
-      try {
-        const res = await axios.get(
-          `http://localhost:5000/api/chat/messages/${rideId}/${loggedInUser.email}/${participantEmail}`
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/chat/messages/${rideId}/${loggedInUser.email}/${participantEmail}`
+      );
+      setMessages((prev) => {
+        const seenTexts = new Set(prev.map((m) => m.text + m.timestamp));
+        const unique = res.data.filter(
+          (msg) => !seenTexts.has(msg.text + msg.timestamp)
         );
-        setMessages(res.data);
-      } catch (err) {
-        console.error("Fetch error:", err);
-      }
-    };
-
-    fetchMessages();
+        const combined = [...prev, ...unique];
+        combined.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        return combined;
+      });
+    } catch (err) {
+      console.error("❌ Error fetching messages:", err);
+    }
   }, [rideId, participantEmail, loggedInUser]);
 
+  // On first load, clear unread & fetch messages (with a slight delay)
+  useEffect(() => {
+    if (loggedInUser && !hasLoaded.current) {
+      hasLoaded.current = true;
+
+      clearUnread(rideId, participantEmail);
+
+      setTimeout(() => {
+        fetchMessages();
+      }, 500);
+    }
+  }, [loggedInUser, rideId, participantEmail, clearUnread, fetchMessages]);
+
+  // Listen for socket messages
   useEffect(() => {
     if (!socket || !loggedInUser) return;
 
@@ -68,8 +102,14 @@ export default function Chat() {
 
     socket.on("receiveMessage", handleReceive);
     return () => socket.off("receiveMessage", handleReceive);
-  }, [participantEmail, loggedInUser, socket]);
+  }, [socket, loggedInUser, participantEmail]);
 
+  // Auto-scroll on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Send message handler
   const handleSend = async () => {
     if (!input.trim() || !loggedInUser) return;
 
@@ -77,49 +117,53 @@ export default function Chat() {
       rideId,
       sender: loggedInUser.email,
       receiver: participantEmail,
-      text: input,
-      timestamp: new Date().toISOString()
+      text: input.trim(),
+      timestamp: new Date().toISOString(),
     };
 
+    setMessages((prev) => [...prev, message]);
+    setInput("");
+
     try {
-      await axios.post("http://localhost:5000/api/chat/messages", message);
       socket.emit("sendMessage", message);
-      setMessages((prev) => [...prev, message]);
-      setInput("");
+      await axios.post("http://localhost:5000/api/chat/messages", message);
     } catch (err) {
-      console.error("Send error:", err);
+      console.error("❌ Failed to send message:", err);
     }
   };
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   if (!loggedInUser) return <div className="chat-container">Loading...</div>;
 
   return (
     <div className="chat-container">
-      <button className="back-button" onClick={() => navigate(-1)}>← Go Back</button>
+      <button className="back-button" onClick={() => navigate(-1)}>
+        ← Go Back
+      </button>
       <h2 className="chat-header">Chat with {participantEmail}</h2>
+
       <div className="chat-messages">
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={
-              msg.sender === loggedInUser.email ? "chat-sent" : "chat-received"
-            }
+            className={msg.sender === loggedInUser.email ? "chat-sent" : "chat-received"}
           >
             <p>{msg.text}</p>
-            <small>{new Date(msg.timestamp).toLocaleString()}</small>
+            <small>
+              {msg.timestamp
+                ? new Date(msg.timestamp).toLocaleTimeString()
+                : "Sending..."}
+            </small>
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
+
       <div className="chat-input">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type your message..."
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
         />
         <button onClick={handleSend}>Send</button>
       </div>

@@ -9,28 +9,25 @@ import ViewRide from "./pages/ViewRide";
 import JoinedRides from "./pages/JoinedRides";
 import JoinRequests from "./pages/JoinRequests";
 import Chat from "./pages/Chat";
-import './index.css'; // Or App.css where Tailwind is imported
-
-
-
-// Inside your <Routes> component
-
-
+import "./index.css";
 
 import { AuthProvider } from "./context/AuthContext";
-import { ChatProvider } from "./context/ChatContext"; // ✅ import ChatProvider
+import { ChatProvider } from "./context/ChatContext";
+
 import { useContext } from "react";
 import { AuthContext } from "./context/AuthContext";
 
-// ✅ Wrap App content in ChatProvider if user is available
+// ✅ Only initialize ChatProvider after user is loaded
 function AppContent() {
-  const { user } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext); // you may need to add `loading` logic if not yet
+
+  if (loading) return <div className="text-center mt-10">Loading...</div>; // Optional loading state
 
   return (
     <ChatProvider user={user}>
       <Router>
         <Navbar />
-        <div className="main-content" style={{ padding: "20px" }}>
+        <div className="main-content p-5">
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
@@ -40,7 +37,6 @@ function AppContent() {
             <Route path="/joined-rides" element={<JoinedRides />} />
             <Route path="/join-requests" element={<JoinRequests />} />
             <Route path="/chat/:rideId/:participantEmail" element={<Chat />} />
-          
           </Routes>
         </div>
       </Router>

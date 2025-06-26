@@ -12,7 +12,6 @@ export default function JoinRequests() {
   useEffect(() => {
     const fetchRequests = async () => {
       if (!user?.email) return;
-
       try {
         const res = await axios.get(`http://localhost:5000/api/join/owner/${user.email}`);
         setRequests(res.data);
@@ -22,17 +21,16 @@ export default function JoinRequests() {
     };
 
     fetchRequests();
-    const interval = setInterval(fetchRequests, 5000); // refresh every 5s
-
+    const interval = setInterval(fetchRequests, 5000); // refresh every 5 seconds
     return () => clearInterval(interval);
   }, [user]);
 
-  const handleAccept = async (id) => {
+  const handleAccept = async (_id) => {
     try {
-      await axios.put(`http://localhost:5000/api/join/${id}/accept`);
+      await axios.put(`http://localhost:5000/api/join/${_id}/accept`);
       setRequests((prev) =>
         prev.map((req) =>
-          req.id === id ? { ...req, accepted: 1, seen: 1 } : req
+          req._id === _id ? { ...req, accepted: true, seen: true } : req
         )
       );
     } catch (err) {
@@ -40,12 +38,12 @@ export default function JoinRequests() {
     }
   };
 
-  const handleReject = async (id) => {
+  const handleReject = async (_id) => {
     try {
-      await axios.put(`http://localhost:5000/api/join/${id}/reject`);
+      await axios.put(`http://localhost:5000/api/join/${_id}/reject`);
       setRequests((prev) =>
         prev.map((req) =>
-          req.id === id ? { ...req, accepted: 0, seen: 1 } : req
+          req._id === _id ? { ...req, accepted: false, seen: true} : req
         )
       );
     } catch (err) {
@@ -65,38 +63,35 @@ export default function JoinRequests() {
     <div className="join-requests-container">
       <h2 className="join-requests-title">Notifications</h2>
       <ul className="space-y-4">
-        {requests.map((req, index) => (
-          <li key={index} className="request-item">
+        {requests.map((req) => (
+          <li key={req._id} className="request-item">
             <p className="request-info">
               <strong>{req.requester_email}</strong> wants to join your ride from{" "}
               <strong>{req.from_location}</strong> to{" "}
-              <strong>{req.to_location}</strong>
+              <strong>{req.to_location}</strong>.
             </p>
             <p className="request-time">
               Requested At: {new Date(req.joined_at).toLocaleString()}
             </p>
 
-            {req.accepted === 1 && (
-              <div className="button-group">
-                <p className="request-status status-accepted">Accepted </p>
-                
-              </div>
+            {req.accepted === true && (
+              <p className="request-status status-accepted">✅ Accepted</p>
             )}
 
-            {req.accepted === 0 && (
-              <p className="request-status status-rejected">Rejected ❌</p>
+            {req.accepted === false && (
+              <p className="request-status status-rejected">❌ Rejected</p>
             )}
 
             {req.accepted === null && (
               <div className="button-group">
                 <button
-                  onClick={() => handleAccept(req.id)}
+                  onClick={() => handleAccept(req._id)}
                   className="button-accept"
                 >
                   Accept
                 </button>
                 <button
-                  onClick={() => handleReject(req.id)}
+                  onClick={() => handleReject(req._id)}
                   className="button-reject"
                 >
                   Reject

@@ -18,10 +18,10 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
-  // ✅ Close profile dropdown when clicking outside
+  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
         setProfileOpen(false);
       }
     };
@@ -29,17 +29,16 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ✅ Close profile dropdown on route change
-  useEffect(() => {
-    setProfileOpen(false);
-  }, [location]);
+  // Close dropdown on route change
+  useEffect(() => setProfileOpen(false), [location]);
 
+  // Fetch join notifications
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!user?.email) return setUnreadCount(0);
       try {
         const res = await axios.get(`http://localhost:5000/api/join/owner/${user.email}`);
-        const unread = res.data.filter((req) => req.seen === 0 || req.seen === false).length;
+        const unread = res.data.filter((req) => !req.seen).length;
         setUnreadCount(unread);
       } catch (err) {
         console.error("Error fetching notifications:", err);
@@ -50,11 +49,13 @@ export default function Navbar() {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Update chat unread count
   useEffect(() => {
-    const total = Object.values(unreadMap).reduce((sum, count) => sum + count, 0);
+    const total = Object.values(unreadMap).reduce((sum, c) => sum + c, 0);
     setChatTotalUnread(total);
   }, [unreadMap]);
 
+  // Reset chat badge if on My Rides page
   useEffect(() => {
     if (location.pathname === "/joined-rides") setChatTotalUnread(0);
   }, [location]);
@@ -95,7 +96,7 @@ export default function Navbar() {
             <div className="profile-dropdown" ref={profileRef}>
               <button onClick={() => setProfileOpen(!profileOpen)} className="profile-btn">
                 <User size={20} className="inline-block mr-1" />
-                {user.name.split(" ")[0]}
+                {user.name?.split(" ")[0]}
               </button>
               {profileOpen && (
                 <div className="profile-menu">
