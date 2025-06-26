@@ -12,6 +12,13 @@ router.post("/post", async (req, res) => {
   }
 
   try {
+    const rideDateTime = new Date(`${date}T${time}`);
+    const now = new Date();
+
+    if (rideDateTime <= now) {
+      return res.status(400).json({ error: "Ride time must be in the future." });
+    }
+
     const ride = new Ride({
       from_location: from,
       to_location: to,
@@ -21,7 +28,7 @@ router.post("/post", async (req, res) => {
       available_seats: seats,
       fare,
       ride_type: rideType,
-      user_email: userEmail
+      user_email: userEmail,
     });
 
     await ride.save();
@@ -32,33 +39,41 @@ router.post("/post", async (req, res) => {
   }
 });
 
-// ✅ GET /api/ride/all - Get all upcoming rides (after cleaning expired ones)
+// ✅ GET /api/ride/all - Get all upcoming rides
 router.get("/all", async (req, res) => {
   try {
     const now = new Date();
 
-    // Remove expired rides first
-    await Ride.deleteMany({
-      $or: [
-        { date: { $lt: now } }, // Older date
-        {
-          date: { $eq: now.toISOString().split("T")[0] }, // Same date
-          time: { $lt: now.toTimeString().slice(0, 5) } // Time passed
+    // Combine date + time and compare with now
+    const rides = await Ride.aggregate([
+      {
+        $addFields: {
+          rideDateTime: {
+            $dateFromString: {
+              dateString: {
+                $concat: [
+                  { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                  "T",
+                  "$time"
+                ]
+              }
+            }
+          }
         }
-      ]
-    });
-
-    const upcomingRides = await Ride.find({
-      $or: [
-        { date: { $gt: now } },
-        {
-          date: { $eq: now.toISOString().split("T")[0] },
-          time: { $gte: now.toTimeString().slice(0, 5) }
+      },
+      {
+        $match: {
+          rideDateTime: { $gte: now }
         }
-      ]
-    }).sort({ date: 1, time: 1 });
+      },
+      {
+        $sort: {
+          rideDateTime: 1
+        }
+      }
+    ]);
 
-    res.json(upcomingRides);
+    res.json(rides);
   } catch (err) {
     console.error("Fetch error:", err);
     res.status(500).json({ error: "Failed to fetch rides" });
@@ -70,7 +85,7 @@ router.get("/joined/:email", async (req, res) => {
   try {
     const requests = await JoinRequest.find({
       requester_email: req.params.email,
-      accepted: true
+      accepted: true,
     });
 
     res.json(requests);
@@ -79,12 +94,12 @@ router.get("/joined/:email", async (req, res) => {
   }
 });
 
-// ✅ GET /api/ride/accepted-by-owner/:email - Accepted requests for owner
+// ✅ GET /api/ride/accepted-by-owner/:email
 router.get("/accepted-by-owner/:email", async (req, res) => {
   try {
     const accepted = await JoinRequest.find({
       owner_email: req.params.email,
-      accepted: true
+      accepted: true,
     });
 
     res.json(accepted);
@@ -93,23 +108,33 @@ router.get("/accepted-by-owner/:email", async (req, res) => {
   }
 });
 
-// ✅ DELETE /api/ride/delete-expired - (Optional separate cleanup route)
+// ✅ DELETE /api/ride/delete-expired - Delete expired rides (based on date + time)
 router.delete("/delete-expired", async (req, res) => {
   try {
     const now = new Date();
 
     const result = await Ride.deleteMany({
-      $or: [
-        { date: { $lt: now } },
-        {
-          date: { $eq: now.toISOString().split("T")[0] },
-          time: { $lt: now.toTimeString().slice(0, 5) }
-        }
-      ]
+      $expr: {
+        $lt: [
+          {
+            $dateFromString: {
+              dateString: {
+                $concat: [
+                  { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                  "T",
+                  "$time"
+                ]
+              }
+            }
+          },
+          now
+        ]
+      }
     });
 
     res.json({ message: `Deleted ${result.deletedCount} expired rides.` });
   } catch (err) {
+    console.error("Delete error:", err);
     res.status(500).json({ error: "Failed to delete expired rides" });
   }
 });
