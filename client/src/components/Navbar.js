@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { ChatContext } from "../context/ChatContext";
 import { Menu, X, User } from "lucide-react";
-import axios from "axios";
+import axios from "../utils/axios"; // ✅ use shared axios instance
 import "../components/Navbar.css";
 
 export default function Navbar() {
@@ -18,7 +18,6 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
@@ -29,33 +28,30 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close dropdown on route change
   useEffect(() => setProfileOpen(false), [location]);
 
-  // Fetch join notifications
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!user?.email) return setUnreadCount(0);
       try {
-        const res = await axios.get(`http://localhost:5000/api/join/owner/${user.email}`);
+        const res = await axios.get(`/api/join/owner/${user.email}`);
         const unread = res.data.filter((req) => !req.seen).length;
         setUnreadCount(unread);
       } catch (err) {
         console.error("Error fetching notifications:", err);
       }
     };
+
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 3000);
     return () => clearInterval(interval);
   }, [user]);
 
-  // Update chat unread count
   useEffect(() => {
     const total = Object.values(unreadMap).reduce((sum, c) => sum + c, 0);
     setChatTotalUnread(total);
   }, [unreadMap]);
 
-  // Reset chat badge if on My Rides page
   useEffect(() => {
     if (location.pathname === "/joined-rides") setChatTotalUnread(0);
   }, [location]);
