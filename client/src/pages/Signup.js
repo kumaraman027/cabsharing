@@ -5,12 +5,14 @@ import axios from "axios";
 // Ensure cookies (if using JWT auth in cookies)
 axios.defaults.withCredentials = true;
 
+const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 export default function Signup() {
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState(""); // Handled and hashed in backend
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [error, setError] = useState("");
@@ -22,14 +24,13 @@ export default function Signup() {
     setSuccessMsg("");
 
     try {
-      await axios.post("http://localhost:5000/api/auth/register", {
+      await axios.post(`${API}/api/auth/register`, {
         name,
         email,
         password,
       });
 
       setSuccessMsg("✅ Signup successful! Redirecting to login...");
-      // Optional: Reset inputs
       setName("");
       setEmail("");
       setPassword("");
@@ -37,7 +38,6 @@ export default function Signup() {
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       console.error("Signup error:", err.response || err.message || err);
-
       setError(err.response?.data?.error || "Something went wrong.");
     } finally {
       setLoading(false);
@@ -90,9 +90,7 @@ export default function Signup() {
           </button>
         </form>
 
-        {error && (
-          <p className="text-red-600 text-sm text-center">{error}</p>
-        )}
+        {error && <p className="text-red-600 text-sm text-center">{error}</p>}
         {successMsg && (
           <p className="text-green-600 text-sm text-center">{successMsg}</p>
         )}

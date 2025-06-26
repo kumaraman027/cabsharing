@@ -4,6 +4,8 @@ import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 import "./JoinRequests.css";
 
+const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 export default function JoinRequests() {
   const { user } = useContext(AuthContext);
   const [requests, setRequests] = useState([]);
@@ -13,9 +15,7 @@ export default function JoinRequests() {
     const fetchNotifications = async () => {
       if (!user?.email) return;
       try {
-        const res = await axios.get(
-          `http://localhost:5000/api/join/owner/${user.email}`
-        );
+        const res = await axios.get(`${API}/api/join/owner/${user.email}`);
         const pendingRequests = res.data.filter((req) => req.accepted === null);
         setRequests(pendingRequests);
       } catch (err) {
@@ -28,7 +28,7 @@ export default function JoinRequests() {
 
   const handleAccept = async (_id) => {
     try {
-      await axios.put(`http://localhost:5000/api/join/${_id}/accept`);
+      await axios.put(`${API}/api/join/${_id}/accept`);
       setRequests((prev) =>
         prev.map((r) =>
           r._id === _id ? { ...r, accepted: 1, seen: 1 } : r
@@ -42,7 +42,7 @@ export default function JoinRequests() {
 
   const handleReject = async (_id) => {
     try {
-      await axios.put(`http://localhost:5000/api/join/${_id}/reject`);
+      await axios.put(`${API}/api/join/${_id}/reject`);
       setRequests((prev) =>
         prev.map((r) =>
           r._id === _id ? { ...r, accepted: 0, seen: 1 } : r

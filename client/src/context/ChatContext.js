@@ -4,6 +4,9 @@ import axios from "axios";
 
 export const ChatContext = createContext();
 
+const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:5000";
+
 export const ChatProvider = ({ user, children }) => {
   const [unreadMap, setUnreadMap] = useState({});
   const [socket, setSocket] = useState(null);
@@ -13,7 +16,7 @@ export const ChatProvider = ({ user, children }) => {
 
     const fetchUnread = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/chat/unread/${user.email}`);
+        const res = await axios.get(`${API}/api/chat/unread/${user.email}`);
         setUnreadMap(res.data || {});
       } catch (err) {
         console.error("❌ Error fetching unread messages:", err);
@@ -26,23 +29,22 @@ export const ChatProvider = ({ user, children }) => {
   useEffect(() => {
     if (!user?.email) return;
 
-    const s = io("http://localhost:5000", {
+    const s = io(SOCKET_URL, {
       withCredentials: true,
     });
 
     s.on("connect", () => {
       console.log(`🔌 Socket connected: ${s.id}`);
       s.emit("register", user.email);
-      console.log("📥 Registered user:", user.email);
     });
 
     s.on("reconnect", () => {
-      console.log(`🔌 Socket reconnected: ${s.id}`);
+      console.log(`🔄 Socket reconnected: ${s.id}`);
       s.emit("register", user.email);
     });
 
     s.on("receiveMessage", (msg) => {
-      console.log("📨 New message via socket:", msg);
+      console.log("📨 Message via socket:", msg);
       const key = `${msg.rideId}_${msg.sender}`;
       setUnreadMap((prev) => ({
         ...prev,
@@ -51,7 +53,7 @@ export const ChatProvider = ({ user, children }) => {
     });
 
     s.on("disconnect", () => {
-      console.log(`🔌 Socket disconnected: ${s.id}`);
+      console.log(`❌ Socket disconnected: ${s.id}`);
     });
 
     setSocket(s);
@@ -63,7 +65,6 @@ export const ChatProvider = ({ user, children }) => {
 
   const clearUnread = async (rideId, participantEmail) => {
     const key = `${rideId}_${participantEmail}`;
-
     setUnreadMap((prev) => {
       const copy = { ...prev };
       delete copy[key];
@@ -71,7 +72,7 @@ export const ChatProvider = ({ user, children }) => {
     });
 
     try {
-      await axios.post("http://localhost:5000/api/chat/mark-as-read", {
+      await axios.post(`${API}/api/chat/mark-as-read`, {
         rideId,
         participantEmail,
         email: user.email,

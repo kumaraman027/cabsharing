@@ -5,6 +5,8 @@ import { AuthContext } from "../context/AuthContext";
 
 axios.defaults.withCredentials = true;
 
+const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 export default function Login() {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -20,9 +22,8 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await axios.post("http://localhost:5000/api/auth/login", { email, password });
-
-      const res = await axios.get("http://localhost:5000/api/auth/me");
+      await axios.post(`${API}/api/auth/login`, { email, password });
+      const res = await axios.get(`${API}/api/auth/me`);
       login(res.data.user);
       navigate("/");
     } catch (err) {

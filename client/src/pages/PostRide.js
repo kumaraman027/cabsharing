@@ -2,6 +2,8 @@ import React, { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 
+const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 export default function PostRide() {
   const { user } = useContext(AuthContext);
 
@@ -43,7 +45,7 @@ export default function PostRide() {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/ride/post", {
+      await axios.post(`${API}/api/ride/post`, {
         from,
         to,
         date,
@@ -187,13 +189,8 @@ export default function PostRide() {
         </div>
       </form>
 
-      {/* Message Output */}
       {message && (
-        <p
-          className={`mt-6 text-center text-sm font-medium ${
-            message.includes("success") ? "text-green-600" : "text-red-600"
-          }`}
-        >
+        <p className={`mt-6 text-center text-sm font-medium ${message.includes("success") ? "text-green-600" : "text-red-600"}`}>
           {message}
         </p>
       )}
