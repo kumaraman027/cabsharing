@@ -1,82 +1,85 @@
 const express = require("express");
 const router = express.Router();
-const jwt = require("jsonwebtoken");
-const db = require("../db");
+const bcrypt = require("bcrypt");
+const User = require("../models/User");
 
-const JWT_SECRET = "your_secret_key"; // 🔐 Use env vars in production
-const COOKIE_NAME = "token";
-
-// ✅ Register Route
-router.post("/register", (req, res) => {
+// ✅ REGISTER
+router.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: "All fields are required." });
-  }
 
-  const sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
-  db.query(sql, [name, email, password], (err, result) => {
-    if (err) {
-      if (err.code === "ER_DUP_ENTRY") {
-        return res.status(400).json({ error: "Email already exists." });
-      }
-      return res.status(500).json({ error: "Database error." });
-    }
-    res.status(201).json({ success: true, userId: result.insertId });
+  if (!name || !email || !password)
+    return res.status(400).json({ error: "All fields are required." });
+
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser)
+      return res.status(409).json({ error: "User already exists." });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+    });
+
+    await newUser.save();
+    res.status(201).json({ message: "Signup successful!" });
+  } catch (err) {
+    console.error("Signup error:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+// ✅ LOGIN
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password)
+    return res.status(400).json({ error: "Email and password required." });
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ error: "Invalid credentials." });
+
+    // Save user session
+    req.session.userId = user._id;
+
+    const { password: _, ...userWithoutPassword } = user._doc;
+    res.json({ message: "Login successful", user: userWithoutPassword });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Server error during login." });
+  }
+});
+
+// ✅ LOGOUT
+router.post("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("connect.sid");
+    res.json({ message: "Logged out successfully" });
   });
 });
 
-// ✅ Login Route
-router.post("/login", (req, res) => {
-  const { email, password } = req.body;
-
-  db.query(
-    "SELECT * FROM users WHERE email = ? AND password = ?",
-    [email, password],
-    (err, results) => {
-      if (err) return res.status(500).json({ error: "Database error." });
-
-      if (results.length === 0) {
-        return res.status(401).json({ error: "Invalid credentials." });
-      }
-
-      const user = results[0];
-
-      // 🔐 Generate JWT token
-      const token = jwt.sign({ email: user.email, name: user.name }, JWT_SECRET, {
-        expiresIn: "7d"
-      });
-
-      // 🍪 Set httpOnly cookie
-      res
-        .cookie(COOKIE_NAME, token, {
-          httpOnly: true,
-          secure: false, // change to true in production (HTTPS)
-          sameSite: "lax",
-          maxAge: 7 * 24 * 60 * 60 * 1000
-        })
-        .json({ success: true, user: { email: user.email, name: user.name } });
-    }
-  );
-});
-
-// ✅ Logout Route
-router.post("/logout", (req, res) => {
-  res.clearCookie(COOKIE_NAME).json({ success: true, message: "Logged out" });
-});
-
-// ✅ Authenticated User Route
-router.get("/me", (req, res) => {
-  const token = req.cookies[COOKIE_NAME];
-
-  if (!token) {
-    return res.status(401).json({ error: "Not logged in" });
-  }
-
+// ✅ AUTH CHECK
+router.get("/me", async (req, res) => {
   try {
-    const user = jwt.verify(token, JWT_SECRET);
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const user = await User.findById(req.session.userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
     res.json({ user });
   } catch (err) {
-    res.status(401).json({ error: "Invalid token" });
+    console.error("Auth check error:", err);
+    res.status(500).json({ error: "Failed to fetch user info" });
   }
 });
 

@@ -1,154 +1,156 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db");
+const JoinRequest = require("../models/JoinRequest");
+const Ride = require("../models/Ride");
 
-// POST /api/join → Submit a join request
-router.post("/", (req, res) => {
+// POST → Submit a join request
+router.post("/", async (req, res) => {
   const {
     ride_id,
     requester_name,
     requester_email,
     owner_email,
     from_location,
-    to_location,
+    to_location
   } = req.body;
 
   if (!ride_id || !requester_email || !owner_email || !requester_name) {
     return res.status(400).json({ error: "Missing required fields." });
   }
 
-  const sql = `
-    INSERT INTO join_requests 
-    (ride_id, requester_name, requester_email, owner_email, from_location, to_location, joined_at, seen, accepted) 
-    VALUES (?, ?, ?, ?, ?, ?, NOW(), FALSE, NULL)
-  `;
-
-  db.query(
-    sql,
-    [ride_id, requester_name, requester_email, owner_email, from_location, to_location],
-    (err, result) => {
-      if (err) {
-        console.error("Error inserting join request:", err);
-        return res.status(500).json({ error: "Failed to insert join request." });
-      }
-      res.status(201).json({ message: "Join request submitted successfully." });
-    }
-  );
-});
-
-// GET /api/join/user/:email → Fetch requests sent by user
-router.get("/user/:email", (req, res) => {
-  const email = req.params.email;
-  const sql = `SELECT * FROM join_requests WHERE requester_email = ?`;
-  db.query(sql, [email], (err, results) => {
-    if (err) {
-      console.error("Error fetching user join requests:", err);
-      return res.status(500).json({ error: "Failed to fetch join requests" });
-    }
-    res.json(results);
-  });
-});
-
-// GET /api/join/owner/:email → Fetch join requests sent to this user's rides
-router.get("/owner/:email", (req, res) => {
-  const email = req.params.email;
-  const sql = `SELECT * FROM join_requests WHERE owner_email = ?`;
-  db.query(sql, [email], (err, results) => {
-    if (err) {
-      console.error("Error fetching owner's ride join requests:", err);
-      return res.status(500).json({ error: "Failed to fetch requests" });
-    }
-    res.json(results);
-  });
-});
-
-// GET /api/join/accepted-by-owner/:email → Fetch accepted requests for rides posted by this user
-router.get("/accepted-by-owner/:email", (req, res) => {
-  const email = req.params.email;
-  const sql = `SELECT * FROM join_requests WHERE owner_email = ? AND accepted = 1`;
-  db.query(sql, [email], (err, results) => {
-    if (err) {
-      console.error("Error fetching accepted join requests for owner:", err);
-      return res.status(500).json({ error: "Failed to fetch accepted requests" });
-    }
-    res.json(results);
-  });
-});
-
-// GET /api/join/all → Used to count accepted users per ride
-router.get("/all", (req, res) => {
-  const sql = `SELECT ride_id, accepted FROM join_requests`;
-  db.query(sql, (err, results) => {
-    if (err) {
-      console.error("Error fetching all join data:", err);
-      return res.status(500).json({ error: "Failed to fetch join data" });
-    }
-    res.json(results);
-  });
-});
-
-// PUT /api/join/:id/accept → Accept a request & reduce seat count
-router.put("/:id/accept", (req, res) => {
-  const { id } = req.params;
-
-  const updateRequestSql = `
-    UPDATE join_requests 
-    SET accepted = 1, seen = 1 
-    WHERE id = ? AND accepted IS NULL
-  `;
-
-  db.query(updateRequestSql, [id], (err, result) => {
-    if (err) {
-      console.error("Accept error:", err);
-      return res.status(500).json({ error: "Failed to accept request" });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(400).json({ message: "Request already accepted or invalid." });
-    }
-
-    const getRideIdSql = `SELECT ride_id FROM join_requests WHERE id = ?`;
-    db.query(getRideIdSql, [id], (err, rows) => {
-      if (err || rows.length === 0) {
-        console.error("Ride fetch error:", err);
-        return res.status(500).json({ error: "Could not fetch ride_id." });
-      }
-
-      const rideId = rows[0].ride_id;
-
-      const updateSeatsSql = `
-        UPDATE rides 
-        SET available_seats = available_seats - 1 
-        WHERE id = ? AND available_seats > 0
-      `;
-
-      db.query(updateSeatsSql, [rideId], (err, result) => {
-        if (err) {
-          console.error("Error updating seats:", err);
-          return res.status(500).json({ error: "Failed to update ride seat count." });
-        }
-
-        if (result.affectedRows === 0) {
-          return res.status(400).json({ error: "No available seats left." });
-        }
-
-        res.json({ message: "Join request accepted & seat updated." });
-      });
+  try {
+    // prevent duplicate requests
+    const existing = await JoinRequest.findOne({
+      rideId: ride_id,
+      requester_email
     });
-  });
+
+    if (existing) {
+      return res.status(409).json({ error: "You have already requested to join this ride." });
+    }
+
+    const join = new JoinRequest({
+      rideId: ride_id,
+      requester_name,
+      requester_email,
+      owner_email,
+      from_location,
+      to_location
+    });
+
+    await join.save();
+    res.status(201).json({ message: "Join request submitted successfully." });
+  } catch (err) {
+    console.error("Insert error:", err);
+    res.status(500).json({ error: "Failed to insert join request." });
+  }
 });
 
-// PUT /api/join/:id/reject → Reject a request
-router.put("/:id/reject", (req, res) => {
-  const { id } = req.params;
-  const sql = `UPDATE join_requests SET accepted = 0, seen = 1 WHERE id = ?`;
-  db.query(sql, [id], (err) => {
-    if (err) {
-      console.error("Reject error:", err);
-      return res.status(500).json({ error: "Failed to reject request" });
+// GET → Requests sent by user
+router.get("/user/:email", async (req, res) => {
+  try {
+    const requests = await JoinRequest.find({ requester_email: req.params.email });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch join requests." });
+  }
+});
+
+// GET → Requests received by ride owner
+router.get("/owner/:email", async (req, res) => {
+  try {
+    const requests = await JoinRequest.find({ owner_email: req.params.email });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch requests." });
+  }
+});
+
+// GET → Accepted requests where current user is ride owner
+router.get("/accepted-by-owner/:email", async (req, res) => {
+  try {
+    const requests = await JoinRequest.find({
+      owner_email: req.params.email,
+      accepted: true
+    });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch accepted requests." });
+  }
+});
+
+// GET → All join data (for seat count)
+router.get("/all", async (req, res) => {
+  try {
+    const requests = await JoinRequest.find({}, "rideId accepted");
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch join data." });
+  }
+});
+
+// PUT → Accept a join request and decrease available seats
+router.put("/:id/accept", async (req, res) => {
+  const requestId = req.params.id;
+
+  try {
+    const request = await JoinRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found." });
     }
-    res.json({ message: "Join request rejected" });
-  });
+
+    if (request.accepted !== null) {
+      return res.status(400).json({ error: "Request already handled." });
+    }
+
+    const ride = await Ride.findById(request.rideId);
+    if (!ride) {
+      return res.status(404).json({ error: "Ride not found." });
+    }
+
+    // Check how many have been accepted already
+    const acceptedCount = await JoinRequest.countDocuments({
+      rideId: ride._id,
+      accepted: true
+    });
+
+    const seatsLeft = ride.seats - acceptedCount;
+    if (seatsLeft <= 0) {
+      return res.status(400).json({ error: "Ride is already full." });
+    }
+
+    request.accepted = true;
+    request.seen = true;
+    await request.save();
+
+    ride.available_seats = Math.max(ride.available_seats - 1, 0);
+    await ride.save();
+
+    res.json({ message: "Join request accepted and seat updated." });
+  } catch (err) {
+    console.error("Accept error:", err);
+    res.status(500).json({ error: "Failed to accept request." });
+  }
+});
+
+// PUT → Reject a request
+router.put("/:id/reject", async (req, res) => {
+  try {
+    const request = await JoinRequest.findByIdAndUpdate(
+      req.params.id,
+      { accepted: false, seen: true },
+      { new: true }
+    );
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found." });
+    }
+
+    res.json({ message: "Join request rejected." });
+  } catch (err) {
+    console.error("Reject error:", err);
+    res.status(500).json({ error: "Failed to reject request." });
+  }
 });
 
 module.exports = router;

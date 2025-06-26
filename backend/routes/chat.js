@@ -1,98 +1,99 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db");
+const Message = require("../models/Message");
 
-// ✅ Save incoming message to DB
-router.post("/messages", (req, res) => {
-  const { rideId, sender, receiver, text } = req.body;
+// Save incoming message to DB
+router.post("/messages", async (req, res) => {
+  const { rideId, sender, receiver, text, timestamp } = req.body;
 
   if (!rideId || !sender || !receiver || !text) {
     return res.status(400).json({ error: "Missing fields" });
   }
 
-  const sql = `
-    INSERT INTO messages (ride_id, sender, receiver, text, timestamp, seen)
-    VALUES (?, ?, ?, ?, NOW(), 0)
-  `;
-
-  db.query(sql, [rideId, sender, receiver, text], (err) => {
-    if (err) {
-      console.error("DB insert failed:", err);
-      return res.status(500).json({ error: "Failed to send message" });
-    }
-
+  try {
+    const newMsg = new Message({
+      rideId,
+      sender,
+      receiver,
+      text,
+      timestamp: timestamp ? new Date(timestamp) : new Date()
+    });
+    await newMsg.save();
     res.status(200).json({ success: true });
-  });
+  } catch (err) {
+    console.error("MongoDB insert failed:", err);
+    res.status(500).json({ error: "Failed to send message" });
+  }
 });
 
-// ✅ Get messages between two users
-router.get("/messages/:rideId/:user1/:user2", (req, res) => {
+// Get messages between two users for a ride
+router.get("/messages/:rideId/:user1/:user2", async (req, res) => {
   const { rideId, user1, user2 } = req.params;
 
-  const sql = `
-    SELECT * FROM messages 
-    WHERE ride_id = ? AND (
-      (sender = ? AND receiver = ?) OR
-      (sender = ? AND receiver = ?)
-    )
-    ORDER BY timestamp ASC
-  `;
+  try {
+    const messages = await Message.find({
+      rideId,
+      $or: [
+        { sender: user1, receiver: user2 },
+        { sender: user2, receiver: user1 }
+      ]
+    }).sort({ timestamp: 1 });
 
-  db.query(sql, [rideId, user1, user2, user2, user1], (err, results) => {
-    if (err) {
-      console.error("DB fetch failed:", err);
-      return res.status(500).json({ error: "Failed to fetch messages" });
-    }
-
-    res.json(results);
-  });
+    res.json(messages);
+  } catch (err) {
+    console.error("MongoDB fetch failed:", err);
+    res.status(500).json({ error: "Failed to fetch messages" });
+  }
 });
 
-// ✅ Get unread counts per ride+sender for a user
-router.get("/unread/:email", (req, res) => {
+// Get unread message counts per ride+sender for a user
+router.get("/unread/:email", async (req, res) => {
   const { email } = req.params;
 
-  const sql = `
-    SELECT ride_id, sender, COUNT(*) as count
-    FROM messages
-    WHERE receiver = ? AND seen = 0
-    GROUP BY ride_id, sender
-  `;
-
-  db.query(sql, [email], (err, results) => {
-    if (err) {
-      console.error("Unread fetch failed:", err);
-      return res.status(500).json({ error: "Failed to fetch unread messages" });
-    }
+  try {
+    const unread = await Message.aggregate([
+      { $match: { receiver: email, seen: false } },
+      {
+        $group: {
+          _id: { rideId: "$rideId", sender: "$sender" },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
 
     const map = {};
-    results.forEach((row) => {
-      const key = `${row.ride_id}_${row.sender}`;
+    unread.forEach(row => {
+      const key = `${row._id.rideId}_${row._id.sender}`;
       map[key] = row.count;
     });
 
     res.json(map);
-  });
+  } catch (err) {
+    console.error("MongoDB unread fetch failed:", err);
+    res.status(500).json({ error: "Failed to fetch unread messages" });
+  }
 });
 
-// ✅ Mark messages as read
-router.post("/mark-as-read", (req, res) => {
+// Mark messages as read
+router.post("/mark-as-read", async (req, res) => {
   const { rideId, participantEmail, email } = req.body;
 
-  const sql = `
-    UPDATE messages
-    SET seen = 1
-    WHERE ride_id = ? AND sender = ? AND receiver = ? AND seen = 0
-  `;
-
-  db.query(sql, [rideId, participantEmail, email], (err) => {
-    if (err) {
-      console.error("Mark read error:", err);
-      return res.status(500).json({ error: "Failed to mark as read" });
-    }
+  try {
+    await Message.updateMany(
+      {
+        rideId,
+        sender: participantEmail,
+        receiver: email,
+        seen: false
+      },
+      { $set: { seen: true } }
+    );
 
     res.json({ success: true });
-  });
+  } catch (err) {
+    console.error("MongoDB mark-as-read failed:", err);
+    res.status(500).json({ error: "Failed to mark as read" });
+  }
 });
 
 module.exports = router;

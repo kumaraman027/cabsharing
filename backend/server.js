@@ -3,30 +3,65 @@ const http = require("http");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const socketIO = require("socket.io");
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+const session = require("express-session");
+const MongoStore = require("connect-mongo");
+
+dotenv.config();
+
+const connectDB = require("./db");
+connectDB();
 
 const app = express();
 const server = http.createServer(app);
 
-// ✅ Allow credentials (cookies) from React frontend
+// ✅ MongoDB connection fallback
+const mongoose = require("mongoose");
+
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("🟢 MongoDB Connected"))
+  .catch((err) => console.error("❌ DB connection failed:", err));
+
+
+// ✅ Middleware
 app.use(cors({
   origin: "http://localhost:3000",
   credentials: true
 }));
-
 app.use(express.json());
 app.use(cookieParser());
 
-// ✅ All API routes
+app.use(session({
+  secret: process.env.SESSION_SECRET || "supersecret",
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URI,
+    collectionName: "sessions"
+  }),
+  cookie: {
+    httpOnly: true,
+    secure: false,
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
+
+// ✅ Routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/ride", require("./routes/ride"));
 app.use("/api/join", require("./routes/join"));
 app.use("/api/chat", require("./routes/chat"));
 
 app.get("/", (req, res) => {
-  res.send("✅ Server is running and accepting connections.");
+  res.send("✅ Server is running.");
 });
 
-// ✅ Setup Socket.IO with CORS config
+// ✅ Socket.IO setup
 const io = socketIO(server, {
   cors: {
     origin: "http://localhost:3000",
@@ -34,22 +69,26 @@ const io = socketIO(server, {
   }
 });
 
-// ✅ Map email → socketId
-const userSocketMap = {};
+const userSocketMap = {}; // email => socket.id
 
 io.on("connection", (socket) => {
-  console.log("🟢 New socket connected:", socket.id);
+  console.log("🟢 Socket connected:", socket.id);
 
+  // Save user to map
   socket.on("register", (email) => {
-    console.log("🔐 Registered user:", email);
+    console.log("📥 Registered:", email);
     userSocketMap[email] = socket.id;
   });
 
+  // Handle messages
   socket.on("sendMessage", (msg) => {
-    const { receiver } = msg;
-    const receiverSocket = userSocketMap[receiver];
+    const receiverSocket = userSocketMap[msg.receiver];
+    console.log(`✉️ Message from ${msg.sender} to ${msg.receiver}`);
+
     if (receiverSocket) {
       io.to(receiverSocket).emit("receiveMessage", msg);
+    } else {
+      console.log("⚠️ Receiver not connected:", msg.receiver);
     }
   });
 
@@ -65,6 +104,7 @@ io.on("connection", (socket) => {
 });
 
 // ✅ Start server
-server.listen(5000, () => {
-  console.log("🚀 Server running at http://localhost:5000");
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });

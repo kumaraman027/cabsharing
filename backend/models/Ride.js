@@ -1,11 +1,15 @@
-const db = require("../db");
+const mongoose = require("mongoose");
 
-exports.postRide = (ride, callback) => {
-  const query = "INSERT INTO rides (from_location, to_location, date, time, seats, fare, ride_type, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-  const values = [ride.from, ride.to, ride.date, ride.time, ride.seats, ride.fare, ride.rideType, ride.userId];
-  db.query(query, values, callback);
-};
+const RideSchema = new mongoose.Schema({
+  from_location: String,
+  to_location: String,
+  date: { type: Date, required: true },
+  time: String,
+  seats: Number,
+  available_seats: Number,
+  fare: Number,
+  ride_type: String,
+  user_email: String
+});
 
-exports.getAllRides = (callback) => {
-  db.query("SELECT * FROM rides", callback);
-};
+module.exports = mongoose.model("Ride", RideSchema);

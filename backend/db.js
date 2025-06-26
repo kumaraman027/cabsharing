@@ -1,19 +1,17 @@
-const mysql = require("mysql2");
+const mongoose = require("mongoose");
+require("dotenv").config();
 
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "Aman098",  // make sure this is correct
-  database: "cabclique",
-});
-
-db.connect((err) => {
-  if (err) {
-    console.error("❌ DB connection failed:", err.message);
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    console.log("✅ MongoDB connected successfully");
+  } catch (error) {
+    console.error("❌ MongoDB connection failed:", error.message);
     process.exit(1);
-  } else {
-    console.log("✅ MySQL connected");
   }
-});
+};
 
-module.exports = db;
+module.exports = connectDB;
