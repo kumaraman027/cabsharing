@@ -3,7 +3,7 @@ const router = express.Router();
 const Ride = require("../models/Ride");
 const JoinRequest = require("../models/JoinRequest");
 
-// POST /api/ride/post - Post a new ride
+// ✅ POST /api/ride/post - Post a new ride
 router.post("/post", async (req, res) => {
   const { from, to, date, time, seats, fare, rideType, userEmail } = req.body;
 
@@ -15,7 +15,7 @@ router.post("/post", async (req, res) => {
     const ride = new Ride({
       from_location: from,
       to_location: to,
-      date: new Date(date), // store in ISO format
+      date: new Date(date),
       time,
       seats,
       available_seats: seats,
@@ -32,24 +32,40 @@ router.post("/post", async (req, res) => {
   }
 });
 
-// GET /api/ride/all - Get all upcoming rides
+// ✅ GET /api/ride/all - Get all upcoming rides (after cleaning expired ones)
 router.get("/all", async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize to midnight
+    const now = new Date();
 
-    const rides = await Ride.find({
-      date: { $gte: today }
+    // Remove expired rides first
+    await Ride.deleteMany({
+      $or: [
+        { date: { $lt: now } }, // Older date
+        {
+          date: { $eq: now.toISOString().split("T")[0] }, // Same date
+          time: { $lt: now.toTimeString().slice(0, 5) } // Time passed
+        }
+      ]
+    });
+
+    const upcomingRides = await Ride.find({
+      $or: [
+        { date: { $gt: now } },
+        {
+          date: { $eq: now.toISOString().split("T")[0] },
+          time: { $gte: now.toTimeString().slice(0, 5) }
+        }
+      ]
     }).sort({ date: 1, time: 1 });
 
-    res.json(rides);
+    res.json(upcomingRides);
   } catch (err) {
     console.error("Fetch error:", err);
     res.status(500).json({ error: "Failed to fetch rides" });
   }
 });
 
-// GET /api/ride/joined/:email - Rides joined by user
+// ✅ GET /api/ride/joined/:email - Rides joined by user
 router.get("/joined/:email", async (req, res) => {
   try {
     const requests = await JoinRequest.find({
@@ -63,7 +79,7 @@ router.get("/joined/:email", async (req, res) => {
   }
 });
 
-// GET /api/ride/accepted-by-owner/:email
+// ✅ GET /api/ride/accepted-by-owner/:email - Accepted requests for owner
 router.get("/accepted-by-owner/:email", async (req, res) => {
   try {
     const accepted = await JoinRequest.find({
@@ -77,14 +93,19 @@ router.get("/accepted-by-owner/:email", async (req, res) => {
   }
 });
 
-// DELETE /api/ride/delete-expired
+// ✅ DELETE /api/ride/delete-expired - (Optional separate cleanup route)
 router.delete("/delete-expired", async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize to midnight
+    const now = new Date();
 
     const result = await Ride.deleteMany({
-      date: { $lt: today }
+      $or: [
+        { date: { $lt: now } },
+        {
+          date: { $eq: now.toISOString().split("T")[0] },
+          time: { $lt: now.toTimeString().slice(0, 5) }
+        }
+      ]
     });
 
     res.json({ message: `Deleted ${result.deletedCount} expired rides.` });
