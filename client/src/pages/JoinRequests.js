@@ -4,6 +4,8 @@ import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 import './JoinRequests.css';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 export default function JoinRequests() {
   const { user } = useContext(AuthContext);
   const [requests, setRequests] = useState([]);
@@ -13,7 +15,7 @@ export default function JoinRequests() {
     const fetchRequests = async () => {
       if (!user?.email) return;
       try {
-        const res = await axios.get(`http://localhost:5000/api/join/owner/${user.email}`);
+        const res = await axios.get(`${API_BASE_URL}/api/join/owner/${user.email}`);
         setRequests(res.data);
       } catch (err) {
         console.error("Error fetching join requests:", err);
@@ -21,13 +23,13 @@ export default function JoinRequests() {
     };
 
     fetchRequests();
-    const interval = setInterval(fetchRequests, 5000); // refresh every 5 seconds
+    const interval = setInterval(fetchRequests, 5000);
     return () => clearInterval(interval);
   }, [user]);
 
   const handleAccept = async (_id) => {
     try {
-      await axios.put(`http://localhost:5000/api/join/${_id}/accept`);
+      await axios.put(`${API_BASE_URL}/api/join/${_id}/accept`);
       setRequests((prev) =>
         prev.map((req) =>
           req._id === _id ? { ...req, accepted: true, seen: true } : req
@@ -40,10 +42,10 @@ export default function JoinRequests() {
 
   const handleReject = async (_id) => {
     try {
-      await axios.put(`http://localhost:5000/api/join/${_id}/reject`);
+      await axios.put(`${API_BASE_URL}/api/join/${_id}/reject`);
       setRequests((prev) =>
         prev.map((req) =>
-          req._id === _id ? { ...req, accepted: false, seen: true} : req
+          req._id === _id ? { ...req, accepted: false, seen: true } : req
         )
       );
     } catch (err) {
@@ -51,12 +53,12 @@ export default function JoinRequests() {
     }
   };
 
-  if (!user || !user.email) {
-    return <p className="p-6 text-center">Please login to see join requests.</p>;
+  if (!user?.email) {
+    return <p className="p-6 text-center text-gray-600">Please log in to view join requests.</p>;
   }
 
   if (requests.length === 0) {
-    return <p className="p-6 text-center">No join requests at the moment.</p>;
+    return <p className="p-6 text-center text-gray-500">No join requests at the moment.</p>;
   }
 
   return (
@@ -71,17 +73,23 @@ export default function JoinRequests() {
               <strong>{req.to_location}</strong>.
             </p>
             <p className="request-time">
-              Requested At: {new Date(req.joined_at).toLocaleString()}
+              Requested At:{" "}
+              {new Date(req.joined_at).toLocaleString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              })}
             </p>
 
             {req.accepted === true && (
               <p className="request-status status-accepted">✅ Accepted</p>
             )}
-
             {req.accepted === false && (
               <p className="request-status status-rejected">❌ Rejected</p>
             )}
-
             {req.accepted === null && (
               <div className="button-group">
                 <button
