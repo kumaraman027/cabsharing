@@ -19,14 +19,17 @@ const server = http.createServer(app);
 // ✅ MongoDB connection fallback
 
 
+ 
+
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("🟢 MongoDB Connected"))
+  .connect(process.env.MONGODB_URI)
+  .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => console.error("❌ DB connection failed:", err));
 
+app.use(cors({
+  origin: "https://cabsharing-s8da.vercel.app",
+  credentials: true,
+}));
 
 // ✅ Middleware
 app.use(cors({
