@@ -16,9 +16,7 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
-// ✅ MongoDB connection fallback
-
-
+// ✅ MongoDB connection
 mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
@@ -27,26 +25,30 @@ mongoose
   .then(() => console.log("🟢 MongoDB Connected"))
   .catch((err) => console.error("❌ DB connection failed:", err));
 
-
 // ✅ Middleware
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: [
+    "http://localhost:3000",
+    "https://cabsharing-s8da.vercel.app"
+  ],
   credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
 
+// ✅ Session config
 app.use(session({
   secret: process.env.SESSION_SECRET || "supersecret",
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URI,
-    collectionName: "sessions"
-  }),
+  mongoUrl: process.env.MONGO_URI, // ✅ Corrected name to match your .env
+  collectionName: "sessions"
+}),
+
   cookie: {
     httpOnly: true,
-    secure: false,
+    secure: false, // set to true if using HTTPS only
     maxAge: 24 * 60 * 60 * 1000
   }
 }));
@@ -64,7 +66,10 @@ app.get("/", (req, res) => {
 // ✅ Socket.IO setup
 const io = socketIO(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://cabsharing-s8da.vercel.app"
+    ],
     credentials: true
   }
 });
@@ -74,17 +79,14 @@ const userSocketMap = {}; // email => socket.id
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
 
-  // Save user to map
   socket.on("register", (email) => {
     console.log("📥 Registered:", email);
     userSocketMap[email] = socket.id;
   });
 
-  // Handle messages
   socket.on("sendMessage", (msg) => {
     const receiverSocket = userSocketMap[msg.receiver];
     console.log(`✉️ Message from ${msg.sender} to ${msg.receiver}`);
-
     if (receiverSocket) {
       io.to(receiverSocket).emit("receiveMessage", msg);
     } else {

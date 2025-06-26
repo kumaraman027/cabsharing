@@ -15,7 +15,7 @@ router.post("/post", async (req, res) => {
     const ride = new Ride({
       from_location: from,
       to_location: to,
-      date: new Date(date), // ensures ISO format
+      date: new Date(date), // store in ISO format
       time,
       seats,
       available_seats: seats,
@@ -36,7 +36,7 @@ router.post("/post", async (req, res) => {
 router.get("/all", async (req, res) => {
   try {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // normalize to midnight
+    today.setHours(0, 0, 0, 0); // Normalize to midnight
 
     const rides = await Ride.find({
       date: { $gte: today }
@@ -81,7 +81,7 @@ router.get("/accepted-by-owner/:email", async (req, res) => {
 router.delete("/delete-expired", async (req, res) => {
   try {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // normalize to midnight
+    today.setHours(0, 0, 0, 0); // Normalize to midnight
 
     const result = await Ride.deleteMany({
       date: { $lt: today }
