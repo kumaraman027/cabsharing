@@ -3,11 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 
-// Ensure credentials like cookies are sent (e.g., JWT token)
 axios.defaults.withCredentials = true;
-
-// Use environment variable for backend URL (fallback to localhost for local testing)
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function Login() {
   const { login } = useContext(AuthContext);
@@ -24,15 +20,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Authenticate user
-      await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
+      await axios.post("http://localhost:5000/api/auth/login", { email, password });
 
-      // Fetch logged-in user data
-      const res = await axios.get(`${API_BASE_URL}/api/auth/me`);
+      const res = await axios.get("http://localhost:5000/api/auth/me");
       login(res.data.user);
       navigate("/");
     } catch (err) {
-      console.error("Login error:", err);
       setError(err.response?.data?.error || "Login failed. Try again.");
     } finally {
       setLoading(false);

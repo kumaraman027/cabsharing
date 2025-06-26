@@ -2,9 +2,6 @@ import React, { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 
-// Auto-detect backend URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 export default function PostRide() {
   const { user } = useContext(AuthContext);
 
@@ -46,15 +43,15 @@ export default function PostRide() {
     }
 
     try {
-      await axios.post(`${API_BASE_URL}/api/ride/post`, {
-        from_location: from,
-        to_location: to,
+      await axios.post("http://localhost:5000/api/ride/post", {
+        from,
+        to,
         date,
         time,
-        available_seats: seats,
+        seats,
         fare,
         rideType,
-        user_email: user.email,
+        userEmail: user.email,
       });
 
       setMessage("✅ Ride posted successfully!");
@@ -81,6 +78,7 @@ export default function PostRide() {
         className="space-y-6 p-6 rounded-xl text-white"
         style={{ background: "linear-gradient(145deg, #255789, #6170a4)" }}
       >
+        {/* From Location */}
         <div>
           <label className="block text-sm font-medium text-gray-200 mb-1">From</label>
           <input
@@ -93,6 +91,7 @@ export default function PostRide() {
           {errors.from && <p className="text-red-300 text-sm mt-1">{errors.from}</p>}
         </div>
 
+        {/* To Location */}
         <div>
           <label className="block text-sm font-medium text-gray-200 mb-1">To</label>
           <input
@@ -105,6 +104,7 @@ export default function PostRide() {
           {errors.to && <p className="text-red-300 text-sm mt-1">{errors.to}</p>}
         </div>
 
+        {/* Date & Time */}
         <div className="flex gap-4">
           <div className="w-1/2">
             <label className="block text-sm font-medium text-gray-200 mb-1">Date</label>
@@ -129,6 +129,7 @@ export default function PostRide() {
           </div>
         </div>
 
+        {/* Ride Type */}
         <div>
           <label className="block text-sm font-medium text-gray-200 mb-1">Ride Type</label>
           <div className="flex gap-6 mt-1">
@@ -148,6 +149,7 @@ export default function PostRide() {
           {errors.rideType && <p className="text-red-300 text-sm mt-1">{errors.rideType}</p>}
         </div>
 
+        {/* Seats & Fare */}
         <div className="flex gap-4">
           <div className="w-1/2">
             <label className="block text-sm font-medium text-gray-200 mb-1">Seats</label>
@@ -174,6 +176,7 @@ export default function PostRide() {
           </div>
         </div>
 
+        {/* Submit Button */}
         <div>
           <button
             type="submit"
@@ -184,6 +187,7 @@ export default function PostRide() {
         </div>
       </form>
 
+      {/* Message Output */}
       {message && (
         <p
           className={`mt-6 text-center text-sm font-medium ${

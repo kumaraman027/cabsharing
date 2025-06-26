@@ -4,8 +4,6 @@ import axios from "axios";
 import { ChatContext } from "../context/ChatContext";
 import "./Chat.css";
 
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 axios.defaults.withCredentials = true;
 
 export default function Chat() {
@@ -14,6 +12,7 @@ export default function Chat() {
   const { socket, clearUnread } = useContext(ChatContext);
 
   const [messages, setMessages] = useState(() => {
+    // Load cached messages for this ride and participant if any
     try {
       const cached = localStorage.getItem(`chat_${rideId}_${participantEmail}`);
       return cached ? JSON.parse(cached) : [];
@@ -26,63 +25,69 @@ export default function Chat() {
   const messagesEndRef = useRef(null);
   const hasLoaded = useRef(false);
 
-  // Save messages locally
+  // Persist messages to localStorage on change
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem(`chat_${rideId}_${participantEmail}`, JSON.stringify(messages));
     }
   }, [messages, rideId, participantEmail]);
 
-  // Get logged-in user
+  // Fetch logged-in user
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await axios.get(`${API}/api/auth/me`);
+        const res = await axios.get("http://localhost:5000/api/auth/me");
         setLoggedInUser(res.data.user);
       } catch (err) {
-        console.error("❌ Auth failed:", err);
+        console.error("❌ User auth failed:", err);
         navigate("/login");
       }
     };
     fetchUser();
   }, [navigate]);
 
-  // Register socket for this user
+  // Register socket
   useEffect(() => {
     if (loggedInUser && socket) {
       socket.emit("register", loggedInUser.email);
     }
   }, [loggedInUser, socket]);
 
-  // Fetch initial chat messages
+  // Fetch initial messages
   const fetchMessages = useCallback(async () => {
     if (!loggedInUser) return;
     try {
       const res = await axios.get(
-        `${API}/api/chat/messages/${rideId}/${loggedInUser.email}/${participantEmail}`
+        `http://localhost:5000/api/chat/messages/${rideId}/${loggedInUser.email}/${participantEmail}`
       );
-      const seenIds = new Set(messages.map((m) => m._id || m.timestamp));
-      const newMessages = res.data.filter(
-        (m) => !seenIds.has(m._id || m.timestamp)
-      );
-      const combined = [...messages, ...newMessages];
-      combined.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      setMessages(combined);
+      setMessages((prev) => {
+        const seenTexts = new Set(prev.map((m) => m.text + m.timestamp));
+        const unique = res.data.filter(
+          (msg) => !seenTexts.has(msg.text + msg.timestamp)
+        );
+        const combined = [...prev, ...unique];
+        combined.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        return combined;
+      });
     } catch (err) {
-      console.error("❌ Error loading chat:", err);
+      console.error("❌ Error fetching messages:", err);
     }
-  }, [rideId, loggedInUser, participantEmail, messages]);
+  }, [rideId, participantEmail, loggedInUser]);
 
-  // On initial load
+  // On first load, clear unread & fetch messages (with a slight delay)
   useEffect(() => {
     if (loggedInUser && !hasLoaded.current) {
       hasLoaded.current = true;
-      clearUnread(rideId, participantEmail);
-      fetchMessages();
-    }
-  }, [loggedInUser, rideId, participantEmail, fetchMessages, clearUnread]);
 
-  // Listen for incoming messages
+      clearUnread(rideId, participantEmail);
+
+      setTimeout(() => {
+        fetchMessages();
+      }, 500);
+    }
+  }, [loggedInUser, rideId, participantEmail, clearUnread, fetchMessages]);
+
+  // Listen for socket messages
   useEffect(() => {
     if (!socket || !loggedInUser) return;
 
@@ -99,12 +104,12 @@ export default function Chat() {
     return () => socket.off("receiveMessage", handleReceive);
   }, [socket, loggedInUser, participantEmail]);
 
-  // Scroll to bottom
+  // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Send message
+  // Send message handler
   const handleSend = async () => {
     if (!input.trim() || !loggedInUser) return;
 
@@ -121,9 +126,9 @@ export default function Chat() {
 
     try {
       socket.emit("sendMessage", message);
-      await axios.post(`${API}/api/chat/messages`, message);
+      await axios.post("http://localhost:5000/api/chat/messages", message);
     } catch (err) {
-      console.error("❌ Send failed:", err);
+      console.error("❌ Failed to send message:", err);
     }
   };
 
@@ -145,10 +150,7 @@ export default function Chat() {
             <p>{msg.text}</p>
             <small>
               {msg.timestamp
-                ? new Date(msg.timestamp).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
+                ? new Date(msg.timestamp).toLocaleTimeString()
                 : "Sending..."}
             </small>
           </div>

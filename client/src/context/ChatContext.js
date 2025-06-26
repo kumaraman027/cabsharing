@@ -4,22 +4,16 @@ import axios from "axios";
 
 export const ChatContext = createContext();
 
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:5000";
-
 export const ChatProvider = ({ user, children }) => {
   const [unreadMap, setUnreadMap] = useState({});
   const [socket, setSocket] = useState(null);
 
-  // Fetch unread messages on mount
   useEffect(() => {
     if (!user?.email) return;
 
     const fetchUnread = async () => {
       try {
-        const res = await axios.get(`${API}/api/chat/unread/${user.email}`, {
-          withCredentials: true,
-        });
+        const res = await axios.get(`http://localhost:5000/api/chat/unread/${user.email}`);
         setUnreadMap(res.data || {});
       } catch (err) {
         console.error("❌ Error fetching unread messages:", err);
@@ -29,25 +23,26 @@ export const ChatProvider = ({ user, children }) => {
     fetchUnread();
   }, [user]);
 
-  // Setup socket connection
   useEffect(() => {
     if (!user?.email) return;
 
-    const s = io(SOCKET_URL, {
+    const s = io("http://localhost:5000", {
       withCredentials: true,
     });
 
     s.on("connect", () => {
       console.log(`🔌 Socket connected: ${s.id}`);
       s.emit("register", user.email);
+      console.log("📥 Registered user:", user.email);
     });
 
     s.on("reconnect", () => {
-      console.log(`♻️ Socket reconnected: ${s.id}`);
+      console.log(`🔌 Socket reconnected: ${s.id}`);
       s.emit("register", user.email);
     });
 
     s.on("receiveMessage", (msg) => {
+      console.log("📨 New message via socket:", msg);
       const key = `${msg.rideId}_${msg.sender}`;
       setUnreadMap((prev) => ({
         ...prev,
@@ -62,35 +57,27 @@ export const ChatProvider = ({ user, children }) => {
     setSocket(s);
 
     return () => {
-      console.log("🛑 Cleaning up socket");
       s.disconnect();
     };
   }, [user]);
 
-  // Function to clear unread count for a conversation
   const clearUnread = async (rideId, participantEmail) => {
     const key = `${rideId}_${participantEmail}`;
 
     setUnreadMap((prev) => {
-      const updated = { ...prev };
-      delete updated[key];
-      return updated;
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
     });
 
     try {
-      await axios.post(
-        `${API}/api/chat/mark-as-read`,
-        {
-          rideId,
-          participantEmail,
-          email: user.email,
-        },
-        {
-          withCredentials: true,
-        }
-      );
+      await axios.post("http://localhost:5000/api/chat/mark-as-read", {
+        rideId,
+        participantEmail,
+        email: user.email,
+      });
     } catch (err) {
-      console.error("❌ Failed to mark as read:", err);
+      console.error("❌ Failed to mark messages as read:", err);
     }
   };
 

@@ -4,8 +4,6 @@ import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 import "./JoinRequests.css";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 export default function JoinRequests() {
   const { user } = useContext(AuthContext);
   const [requests, setRequests] = useState([]);
@@ -16,7 +14,7 @@ export default function JoinRequests() {
       if (!user?.email) return;
       try {
         const res = await axios.get(
-          `${API_BASE_URL}/api/join/owner/${user.email}`
+          `http://localhost:5000/api/join/owner/${user.email}`
         );
         const pendingRequests = res.data.filter((req) => req.accepted === null);
         setRequests(pendingRequests);
@@ -30,9 +28,11 @@ export default function JoinRequests() {
 
   const handleAccept = async (_id) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/join/${_id}/accept`);
+      await axios.put(`http://localhost:5000/api/join/${_id}/accept`);
       setRequests((prev) =>
-        prev.map((r) => (r._id === _id ? { ...r, accepted: 1, seen: 1 } : r))
+        prev.map((r) =>
+          r._id === _id ? { ...r, accepted: 1, seen: 1 } : r
+        )
       );
       alert("✅ Join request accepted.");
     } catch (err) {
@@ -42,9 +42,11 @@ export default function JoinRequests() {
 
   const handleReject = async (_id) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/join/${_id}/reject`);
+      await axios.put(`http://localhost:5000/api/join/${_id}/reject`);
       setRequests((prev) =>
-        prev.map((r) => (r._id === _id ? { ...r, accepted: 0, seen: 1 } : r))
+        prev.map((r) =>
+          r._id === _id ? { ...r, accepted: 0, seen: 1 } : r
+        )
       );
       alert("❌ Join request rejected.");
     } catch (err) {
@@ -75,7 +77,8 @@ export default function JoinRequests() {
         {requests.map((req) => (
           <li key={req._id} className="request-item">
             <p className="request-info">
-              <strong>{req.requester_name || req.requester_email}</strong> wants to join your ride from{" "}
+              <strong>{req.requester_name || req.requester_email}</strong> wants
+              to join your ride from{" "}
               <strong>{req.from_location}</strong> to{" "}
               <strong>{req.to_location}</strong>.
             </p>
@@ -93,10 +96,16 @@ export default function JoinRequests() {
 
             {req.accepted === null && (
               <div className="button-group">
-                <button onClick={() => handleAccept(req._id)} className="button-accept">
+                <button
+                  onClick={() => handleAccept(req._id)}
+                  className="button-accept"
+                >
                   Accept
                 </button>
-                <button onClick={() => handleReject(req._id)} className="button-reject">
+                <button
+                  onClick={() => handleReject(req._id)}
+                  className="button-reject"
+                >
                   Reject
                 </button>
               </div>

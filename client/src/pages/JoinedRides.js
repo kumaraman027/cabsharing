@@ -5,8 +5,6 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./JoinedRides.css";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 export default function JoinedRides() {
   const { user } = useContext(AuthContext);
   const { unreadMap } = useContext(ChatContext);
@@ -23,7 +21,7 @@ export default function JoinedRides() {
 
   const fetchJoinedByUser = async (email) => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/join/user/${email}`);
+      const res = await axios.get(`http://localhost:5000/api/join/user/${email}`);
       setJoined(res.data || []);
     } catch (err) {
       console.error("Error fetching joined rides:", err);
@@ -32,7 +30,7 @@ export default function JoinedRides() {
 
   const fetchAcceptedForMyRides = async (email) => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/join/accepted-by-owner/${email}`);
+      const res = await axios.get(`http://localhost:5000/api/join/accepted-by-owner/${email}`);
       setPostedAccepted(res.data || []);
     } catch (err) {
       console.error("Error fetching riders joined my rides:", err);

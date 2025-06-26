@@ -2,9 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-// Base URL: uses deployed backend if available
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
+// Ensure cookies (if using JWT auth in cookies)
 axios.defaults.withCredentials = true;
 
 export default function Signup() {
@@ -12,7 +10,7 @@ export default function Signup() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState(""); // Handled and hashed in backend
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [error, setError] = useState("");
@@ -24,20 +22,22 @@ export default function Signup() {
     setSuccessMsg("");
 
     try {
-      await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      await axios.post("http://localhost:5000/api/auth/register", {
         name,
         email,
         password,
       });
 
       setSuccessMsg("✅ Signup successful! Redirecting to login...");
+      // Optional: Reset inputs
       setName("");
       setEmail("");
       setPassword("");
 
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
-      console.error("Signup error:", err);
+      console.error("Signup error:", err.response || err.message || err);
+
       setError(err.response?.data?.error || "Something went wrong.");
     } finally {
       setLoading(false);
@@ -77,7 +77,6 @@ export default function Signup() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
             disabled={loading}
             className="w-full px-4 py-3 rounded-lg bg-gray-100 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
